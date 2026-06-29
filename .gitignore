@@ -1,0 +1,23 @@
+# ── OS / editor cruft ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# ── Vercel / build ──────────────────────────────────────────────────
+.vercel
+.env
+.env.*
+*.log
+
+# ── Node (none required, but in case tooling is added later) ─────────
+node_modules/
+
+# ── Secrets — NEVER commit. The admin key is entered at the /admin
+#    login screen and lives only in the browser sessionStorage.
+#    Nothing in this repo should ever contain an admin or gateway key.
+secrets/
+*.key
+admin-key.txt

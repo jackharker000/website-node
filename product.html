@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Build — Sail Race Tracker</title>
+<meta name="description" content="How the Sail Race Tracker works: LoRa GPS boat devices, a Raspberry Pi gateway, and a Flask + Leaflet live web dashboard. Hardware, software and field-test results.">
+<link rel="icon" href="assets/img/mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=3">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap">
+    <a href="index.html"><img class="logo" src="assets/img/logo.svg" alt="Sail Race Tracker"></a>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="product.html" class="active">The Build</a>
+      <a href="story.html">Story &amp; Press</a>
+      <a class="btn btn-primary nav-cta" href="index.html#film">Watch the film</a>
+    </div>
+    <button class="burger" id="burger" aria-label="Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+</nav>
+
+<!-- ===== HERO ===== -->
+<header class="hero" style="padding-bottom:30px">
+  <div class="wrap">
+    <div class="section-head" style="max-width:820px">
+      <span class="eyebrow">The build</span>
+      <h1 style="font-size:clamp(2.2rem,4.6vw,3.6rem)">From radio waves to a live race map.</h1>
+      <p style="font-size:1.15rem">A full end-to-end system, designed and integrated from separate development modules — GPS, LoRa radios, microcontrollers, a Raspberry Pi backend and a browser dashboard — all engineered to survive a day of youth dinghy racing.</p>
+    </div>
+  </div>
+</header>
+
+<!-- ===== STATS ===== -->
+<section style="padding-top:10px">
+  <div class="wrap">
+    <div class="stats">
+      <div class="stat reveal"><div class="num" data-count="6" data-suffix="">0</div><div class="lbl">development phases, research → field trials</div></div>
+      <div class="stat reveal"><div class="num" data-count="50" data-suffix="–200">0</div><div class="lbl">boats per regatta the system targets</div></div>
+      <div class="stat reveal"><div class="num" data-count="8" data-suffix="hr+">0</div><div class="lbl">battery endurance for a full race day</div></div>
+      <div class="stat reveal"><div class="num" data-prefix="$" data-count="0" data-suffix="/mo">0</div><div class="lbl">subscription &amp; SIM cost — none required</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ARCHITECTURE ===== -->
+<section class="bg-alt">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">System architecture</span>
+      <h2>Three parts, one data flow.</h2>
+      <p>Each boat carries a LoRa GPS tracker. A support-boat gateway collects every position over the mesh and hands it to a Raspberry Pi, which logs it to a database and serves the live dashboard.</p>
+    </div>
+    <div class="feature reveal" style="margin-top:0">
+      <div class="feature-media"><img src="assets/img/architecture-flow.jpg" alt="Detailed system data-flow diagram"></div>
+      <div>
+        <ul class="ticks">
+          <li><b>Boat tracker</b> — ESP32 microcontroller + LoRa module &amp; aerial + NEO-M8N GPS + 3.7V battery, in a waterproof case on a 3D-printed mast mount</li>
+          <li><b>Support-boat gateway</b> — a TTGO LoRa32 board connected by USB to a Raspberry Pi 4 in a waterproof box</li>
+          <li><b>Backend</b> — Mosquitto MQTT broker + a Python listener, writing to a SQLite database</li>
+          <li><b>Dashboard</b> — a Flask API serving a Leaflet.js map to any browser</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== HARDWARE ===== -->
+<section>
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Hardware</span>
+      <h2>Off-the-shelf parts, carefully integrated.</h2>
+      <p>Unlike pre-packaged commercial trackers, every module here was selected, wired and tested by hand — learning to troubleshoot firmware, wiring and signal issues systematically.</p>
+    </div>
+    <div class="gallery">
+      <figure class="reveal"><img src="assets/img/board-wired.jpg" alt="TTGO LoRa32 board wired up"><figcaption>TTGO LoRa32 + LoRa module, wired for bench testing</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/gps-modules.jpg" alt="NEO-M8N GPS modules"><figcaption>NEO-M8N GPS modules — chosen for speed &amp; accuracy</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/wired-trackers.jpg" alt="Assembled wired trackers"><figcaption>Assembled tracker nodes ready for testing</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/raspberry-pi.jpg" alt="Raspberry Pi 4"><figcaption>Raspberry Pi 4 — the backend hub</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/case-blue.jpg" alt="Waterproof tracker enclosure"><figcaption>IP67 waterproof enclosure selection</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/mount-3d.jpg" alt="3D-printed mast mount"><figcaption>Custom 3D-printed mast mount</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SOFTWARE ===== -->
+<section class="bg-alt">
+  <div class="wrap">
+    <div class="feature reveal" style="margin-top:0">
+      <div class="feature-media"><img src="assets/img/dashboard-trails.jpg" alt="Dashboard showing multiple boat trails"></div>
+      <div>
+        <span class="eyebrow">Software</span>
+        <h3>The dashboard was the hardest — and most rewarding — part.</h3>
+        <p>Getting many boats' data onto one map, with trails, data points and a time function, took many iterations of debugging the HTML and back-end data flow.</p>
+        <ul class="ticks">
+          <li>SQLite for GPS record logging</li>
+          <li>Flask API running on the Raspberry Pi</li>
+          <li>Leaflet.js front end with marker plotting &amp; trails</li>
+          <li>Race-replay features and a live test site hosted via Vercel</li>
+        </ul>
+      </div>
+    </div>
+    <div class="grid cols-3" style="margin-top:30px">
+      <figure class="card reveal" style="padding:0;overflow:hidden"><img src="assets/img/dashboard-track.jpg" alt="Single boat track on map" style="border-radius:0"></figure>
+      <figure class="card reveal" style="padding:0;overflow:hidden"><img src="assets/img/dashboard-markers.jpg" alt="Multiple boats with markers" style="border-radius:0"></figure>
+      <figure class="card reveal" style="padding:0;overflow:hidden"><img src="assets/img/dashboard-ui.jpg" alt="Full dashboard interface" style="border-radius:0"></figure>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ON THE WATER ===== -->
+<section>
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">On the water</span>
+      <h2>Tested where it matters.</h2>
+      <p>Bench tests on land, waterproofing trials in the pool, then real sail-training sessions with Royal Akarana Yacht Club — the system ran with no physical or software failures.</p>
+    </div>
+    <div class="gallery">
+      <figure class="reveal"><img src="assets/img/pool-test.jpg" alt="Pool testing waterproofing"><figcaption>Pool testing the waterproof enclosure</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/tracker-on-mast.jpg" alt="Tracker mounted on mast with display"><figcaption>Tracker mounted on the mast</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/tracker-deployed.jpg" alt="Tracker deployed on a boat"><figcaption>Deployed on the boat for trials</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/tracker-closeup.jpg" alt="Close-up of tracker and mount"><figcaption>The tracker unit and mount, close up</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/tracker-on-boat.jpg" alt="The tracker mounted at the base of the mast on the boat"><figcaption>Mounted at the base of the mast, on the boat</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/tracker-mast.jpg" alt="Tracker on the mast outdoors"><figcaption>Field-ready on the water</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- ===== NEXT STEPS ===== -->
+<section class="bg-alt">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Evaluation &amp; next steps</span>
+      <h2>A successful proof of concept — with a clear path to a product.</h2>
+      <p>The prototype proved a low-cost, real-time, subscription-free tracker is possible. The main limitation was Meshtastic firmware throttling how much GPS data could flow. The roadmap:</p>
+    </div>
+    <div class="grid cols-4">
+      <div class="card reveal"><div class="ico">⚙️</div><h3>Custom firmware</h3><p>Replace Meshtastic with an Arduino-based stack and custom Python to unlock continuous, time-stamped GPS data.</p></div>
+      <div class="card reveal"><div class="ico">🔧</div><h3>Custom PCB</h3><p>Move from development boards to a purpose-built PCB — cheaper, smaller and more reliable.</p></div>
+      <div class="card reveal"><div class="ico">🖥️</div><h3>Full web app</h3><p>Race setup, sailor/device pairing, training modes and a multi-race regatta dashboard with capsize alerts.</p></div>
+      <div class="card reveal"><div class="ico">📈</div><h3>Smarter devices</h3><p>Add a start-timer display and motion sensors to detect capsizes and measure heel angle &amp; tacking efficiency.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="cta-band reveal">
+      <h2>Want the full story?</h2>
+      <p>See how this student project won the Samsung Solve for Tomorrow national award and made it onto RNZ.</p>
+      <a class="btn btn-primary" href="story.html">Read the story &amp; press</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <img class="logo" src="assets/img/logo-light.svg" alt="Sail Race Tracker">
+        <p class="muted">Low-cost, open-source GPS race tracking for youth sailing. Designed and built by Jack Harker, ACG Parnell.</p>
+      </div>
+      <div class="foot-links">
+        <div class="foot-col">
+          <h5>Explore</h5>
+          <a href="index.html">Home</a>
+          <a href="product.html">The Build</a>
+          <a href="story.html">Story &amp; Press</a>
+        </div>
+        <div class="foot-col">
+          <h5>Recognition</h5>
+          <a href="story.html#award">Samsung Solve for Tomorrow</a>
+          <a href="story.html#press">RNZ interview</a>
+        </div>
+      </div>
+    </div>
+    <div class="copyright">
+      <span>© 2025 Jack Harker · Sail Race Tracker</span>
+      <span>Meshtastic · LoRa · Raspberry Pi · Flask · Leaflet · SQLite</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

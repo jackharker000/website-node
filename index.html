@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sail Race Tracker — low-cost, open-source GPS tracking for youth sailing</title>
+<meta name="description" content="A low-cost, SIM-free, open-source GPS race-tracking system for youth sailing dinghies. Winner of the Samsung Solve for Tomorrow 2025 award. Built by Jack Harker.">
+<link rel="icon" href="assets/img/mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=3">
+</head>
+<body>
+
+<!-- ===== NAV ===== -->
+<nav class="nav">
+  <div class="wrap">
+    <a href="index.html"><img class="logo" src="assets/img/logo.svg" alt="Sail Race Tracker"></a>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html" class="active">Home</a>
+      <a href="product.html">The Build</a>
+      <a href="story.html">Story &amp; Press</a>
+      <a class="btn btn-primary nav-cta" href="#film">Watch the film</a>
+    </div>
+    <button class="burger" id="burger" aria-label="Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+</nav>
+
+<!-- ===== HERO ===== -->
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow"><span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block;box-shadow:0 0 10px rgba(255,90,60,.7)"></span> Open-source &middot; SIM-free &middot; built for clubs</span>
+      <h1>See the whole race.<br><span class="grad-text">From the shore.</span></h1>
+      <p class="lead">Sail Race Tracker is a low-cost, waterproof, open-source GPS tracking system for youth sailing fleets — bringing America's-Cup-style live maps to club and school regattas for a fraction of the cost.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#film">▶ Watch the film</a>
+        <a class="btn btn-ghost" href="product.html">See how it works</a>
+      </div>
+      <div class="badge-row">
+        <span class="badge"><span class="dot"></span><b>1st&nbsp;Prize</b>&nbsp;Samsung Solve for Tomorrow 2025</span>
+        <span class="badge"><span class="dot"></span><b>1st</b>&nbsp;NIWA Science Fair 2025</span>
+        <span class="badge"><span class="dot"></span>Featured on <b>RNZ</b></span>
+      </div>
+    </div>
+    <div class="hero-media reveal">
+      <img src="assets/img/brand-illustration.jpg" alt="Sail Race Tracker — live fleet tracking concept">
+    </div>
+  </div>
+</header>
+
+<!-- ===== PRIZE BANNER ===== -->
+<div class="prize">
+  <div class="wrap">
+    <span class="pill">★ Samsung Solve for Tomorrow 2025</span>
+    <b>1st Prize, Years 7–10 — NZ$9,000</b>
+    <span>awarded 30 October 2025 · Samsung Electronics NZ × MOTAT × TENZ</span>
+  </div>
+</div>
+
+<!-- ===== PROBLEM ===== -->
+<section>
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">The problem</span>
+      <h2>Youth sailing is thrilling — and almost impossible to follow.</h2>
+      <p>From shore, parents and coaches can't see much of the race and often have no idea where sailors are. Professional events like SailGP and the America's Cup solve this with live GPS maps — but those systems are too expensive, too complex, and too reliant on mobile data for club or school use.</p>
+    </div>
+    <div class="grid cols-3">
+      <div class="card reveal"><div class="ico">💸</div><h3>Too expensive</h3><p>Commercial trackers (RaceQs, Sailmon, Yellowbrick) run NZ$500–900 per unit, plus $30+/month subscriptions.</p></div>
+      <div class="card reveal"><div class="ico">📵</div><h3>Phone &amp; SIM dependent</h3><p>Most rely on a phone or SIM on each boat — but phones are banned in racing and data costs add up fast.</p></div>
+      <div class="card reveal"><div class="ico">🌊</div><h3>Not built for dinghies</h3><p>Nothing on the market is waterproof, SIM-free, class-legal <em>and</em> able to handle a 50–200 boat regatta.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SOLUTION ===== -->
+<section class="bg-alt">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">The solution</span>
+      <h2>A complete, low-cost tracking system built on open-source tech.</h2>
+      <p>Each boat carries a lightweight, waterproof LoRa GPS tracker. Positions hop across a radio mesh to a support-boat gateway and Raspberry Pi, then onto a live web dashboard anyone can open from the clubhouse — no SIM cards, no subscriptions.</p>
+    </div>
+
+    <div class="feature reveal">
+      <div class="feature-media"><img src="assets/img/architecture.jpg" alt="System architecture: boat devices to support-boat gateway to web dashboard"></div>
+      <div>
+        <span class="eyebrow">How it flows</span>
+        <h3>Boat → mesh → gateway → dashboard</h3>
+        <p>A simple but powerful data flow turns raw GPS broadcasts into structured, replayable race data.</p>
+        <ul class="ticks">
+          <li>Boat trackers broadcast GPS over long-range LoRa radio</li>
+          <li>Data hops through a mesh to a support-boat gateway</li>
+          <li>A Raspberry Pi collects, stores and serves the data</li>
+          <li>A browser dashboard shows live &amp; historical races</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="feature reverse reveal">
+      <div class="feature-media"><img src="assets/img/dashboard-ui.jpg" alt="Leaflet web dashboard showing boat tracks"></div>
+      <div>
+        <span class="eyebrow">Watch from anywhere</span>
+        <h3>A live web dashboard, on any phone or tablet</h3>
+        <p>Built with Flask and Leaflet.js, the dashboard plots every boat on the map with trails, timing and race replay — so spectators stay engaged and coaches can review tactics afterwards.</p>
+        <ul class="ticks">
+          <li>Live fleet view from any internet-connected device</li>
+          <li>Trails, markers and race replay for post-race analysis</li>
+          <li>No app to install — it's just a web page</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="feature reveal">
+      <div class="feature-media"><img src="assets/img/boat-hero.jpg" alt="The boat rigged with the Sail Race Tracker"></div>
+      <div>
+        <span class="eyebrow">The real thing</span>
+        <h3>Designed, built and sailed.</h3>
+        <p>This isn't a concept render — it's a working prototype, mounted on the boat and tested on the water with a real youth fleet.</p>
+        <ul class="ticks">
+          <li>Waterproof tracker on a custom 3D-printed mast mount</li>
+          <li>Survives capsizes and lasts a full race day</li>
+          <li>Proven end to end, with no system failures in trials</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== WHO IT'S FOR ===== -->
+<section>
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Who it's for</span>
+      <h2>Built around four real user groups.</h2>
+      <p>The design goals came straight from talking with sailors, parents, coaches and race officials across Auckland's clubs, Yachting New Zealand, High Performance Sport NZ and NZIODA.</p>
+    </div>
+    <div class="grid cols-4">
+      <div class="card who reveal"><span class="tag">Sailors</span><h3>Learn faster</h3><p>Replay races and training to see exactly where time was gained or lost — learning from data, not just memory.</p></div>
+      <div class="card who reveal"><span class="tag">Officials</span><h3>Run it safely</h3><p>See the full fleet instantly, spot drifting or capsized boats quickly, and record timing accurately.</p></div>
+      <div class="card who reveal"><span class="tag">Coaches</span><h3>Coach with data</h3><p>Replay full sessions, compare sailor choices and run large-group debriefs with real evidence.</p></div>
+      <div class="card who reveal"><span class="tag">Parents</span><h3>Follow the action</h3><p>Watch live from shore — staying involved while cutting the need for fuel-burning chase boats.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FILM ===== -->
+<section id="film" class="bg-alt">
+  <div class="wrap">
+    <div class="section-head reveal" style="margin:0 auto 40px;text-align:center">
+      <span class="eyebrow">The film</span>
+      <h2>The Sail Race Tracker story</h2>
+      <p style="margin:0 auto">The film produced for the Samsung Solve for Tomorrow national final — the problem, the build, and the system on the water.</p>
+    </div>
+    <div class="video-embed reveal">
+      <iframe src="https://www.youtube-nocookie.com/embed/KwD-CH28lW8?rel=0" title="Sail Race Tracker — Samsung Solve for Tomorrow film" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CTA ===== -->
+<section>
+  <div class="wrap">
+    <div class="cta-band reveal">
+      <span class="eyebrow">Where next</span>
+      <h2>A proven proof of concept — ready for the next stage.</h2>
+      <p>Field-tested with Royal Akarana Yacht Club, the prototype works end to end. The roadmap: custom firmware for richer data, a custom PCB, and a full race-management app.</p>
+      <div class="hero-cta" style="justify-content:center">
+        <a class="btn btn-primary" href="product.html">Explore the build</a>
+        <a class="btn btn-ghost" href="story.html">Read the story &amp; press</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <img class="logo" src="assets/img/logo-light.svg" alt="Sail Race Tracker">
+        <p class="muted">Low-cost, open-source GPS race tracking for youth sailing. Designed and built by Jack Harker, ACG Parnell.</p>
+      </div>
+      <div class="foot-links">
+        <div class="foot-col">
+          <h5>Explore</h5>
+          <a href="index.html">Home</a>
+          <a href="product.html">The Build</a>
+          <a href="story.html">Story &amp; Press</a>
+        </div>
+        <div class="foot-col">
+          <h5>Recognition</h5>
+          <a href="story.html#award">Samsung Solve for Tomorrow</a>
+          <a href="story.html#press">RNZ interview</a>
+        </div>
+      </div>
+    </div>
+    <div class="copyright">
+      <span>© 2025 Jack Harker · Sail Race Tracker</span>
+      <span>Built with open-source tech · Meshtastic · LoRa · Raspberry Pi · Flask · Leaflet</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

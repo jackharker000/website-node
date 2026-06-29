@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" role="img" aria-label="Sail Race Tracker">
+  <defs>
+    <linearGradient id="m" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1E6BFF"/>
+      <stop offset="1" stop-color="#0B1B30"/>
+    </linearGradient>
+  </defs>
+  <rect width="40" height="40" rx="11" fill="url(#m)"/>
+  <path d="M21 9 L21 30 L10.5 30 Q19 22 21 9 Z" fill="#fff"/>
+  <path d="M23 13 L23 30 L30.5 30 Q26 22 23 13 Z" fill="#fff" opacity="0.55"/>
+  <path d="M8 31.5 Q20 37 32 31.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="31" cy="11" r="3.4" fill="#FF5A3C"/>
+</svg>

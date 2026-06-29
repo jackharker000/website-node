@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sail Race Tracker — Live</title>
+<link rel="icon" href="assets/mark.svg">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="shared/srt-theme.css">
+<style>
+  #app{position:fixed;inset:0;display:flex;flex-direction:column}
+  .v-main{flex:1;display:flex;min-height:0}
+  .v-side{width:328px;background:var(--panel);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+  .v-sec{padding:16px 18px;border-bottom:1px solid var(--line);flex-shrink:0}
+  .v-map{flex:1;min-width:0;background:#0a1620;position:relative}
+  html.light .v-map{background:#d6e2ee}
+
+  /* race picker */
+  .v-rb{width:100%;display:flex;align-items:center;gap:11px;padding:11px 12px;margin-bottom:8px;
+    background:var(--surface);border:1px solid var(--line);border-radius:12px;color:var(--muted);
+    cursor:pointer;transition:.16s ease;text-align:left}
+  .v-rb:hover{border-color:var(--accline);transform:translateY(-1px)}
+  .v-rb.on{background:var(--accsoft);border-color:var(--accline);color:var(--text);box-shadow:0 8px 20px -16px rgba(11,95,255,.8)}
+  .v-rb:last-child{margin-bottom:0}
+  .v-rn{width:30px;height:30px;border-radius:8px;background:var(--surface-2);display:flex;
+    align-items:center;justify-content:center;font:700 13px 'Space Grotesk';flex-shrink:0;transition:.16s}
+  .v-rb.on .v-rn{background:var(--grad);color:#fff}
+  .v-ri{flex:1;min-width:0}
+  .v-rna{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+  .v-rsu{font-size:12px;color:var(--muted);margin-top:3px;display:flex;gap:7px;align-items:center}
+  .v-rsu .venue{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .v-rsu .badge{padding:3px 7px;font-size:9px;border-radius:5px}
+
+  /* conditions / wind */
+  .v-cond{display:flex;align-items:center;gap:15px}
+  .v-windcanvas{flex-shrink:0;filter:drop-shadow(0 2px 8px rgba(11,95,255,.18))}
+  .v-wspd{font:700 22px 'Space Grotesk';color:var(--cyan);line-height:1;letter-spacing:-.01em}
+  html.light .v-wspd{color:var(--primary)}
+  .v-wdir{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.35}
+
+  .v-lbwrap{flex:1;display:flex;flex-direction:column;overflow:hidden;padding-top:16px}
+  .v-lbhd{display:flex;align-items:center;justify-content:space-between;padding:0 18px;margin-bottom:10px}
+  .v-lbhd .sl{margin-bottom:0}
+  .v-lbcount{font:600 11px 'Space Grotesk';color:var(--muted);background:var(--surface-2);padding:3px 9px;border-radius:999px}
+  .v-lbw{flex:1;overflow-y:auto;padding:0 12px 8px}
+  .v-lbw::-webkit-scrollbar{width:6px}.v-lbw::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:3px}
+
+  /* controls bar (replay) */
+  .v-ctrl{min-height:70px;background:var(--hdr);border-top:1px solid var(--line);display:flex;
+    align-items:center;padding:0 20px;gap:16px;flex-shrink:0}
+  .v-ctrl.hidden{display:none}
+  .v-cb{width:42px;height:42px;border-radius:11px;border:1px solid var(--line-2);background:var(--surface);
+    color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;transition:.16s}
+  .v-cb:hover{border-color:var(--primary)}
+  .v-cb.on{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 10px 24px -14px rgba(11,95,255,.9)}
+  .v-pw{flex:1;display:flex;flex-direction:column;gap:7px;min-width:0}
+  .v-pg{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:4px;outline:none;cursor:pointer;
+    background:linear-gradient(90deg,var(--cyan) 0%,var(--cyan) var(--pct,0%),var(--line-2) var(--pct,0%))}
+  .v-pg::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;
+    border:3px solid var(--cyan);cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+  .v-pg::-moz-range-thumb{width:16px;height:16px;border:3px solid var(--cyan);border-radius:50%;background:#fff;cursor:pointer}
+  .v-ti{display:flex;justify-content:space-between;font:600 12px 'Space Grotesk';color:var(--muted);font-variant-numeric:tabular-nums}
+  .v-ti #tc{color:var(--text)}
+  .v-spd{display:flex;gap:6px;flex-shrink:0}
+  .v-sbtn{padding:8px 11px;border-radius:8px;border:1px solid var(--line-2);background:var(--surface);
+    color:var(--muted);font:600 13px 'Space Grotesk';cursor:pointer;transition:.16s}
+  .v-sbtn:hover{border-color:var(--primary);color:var(--text)}
+  .v-sbtn.on{background:var(--accsoft);border-color:var(--primary);color:var(--primary)}
+  html:not(.light) .v-sbtn.on{color:var(--cyan)}
+
+  .modepill{display:inline-flex;border:1px solid var(--line-2);border-radius:10px;overflow:hidden;background:var(--surface)}
+  .modepill button{padding:7px 13px;background:transparent;color:var(--muted);border:none;cursor:pointer;
+    font:600 12px 'Space Grotesk';display:inline-flex;align-items:center;gap:6px;transition:.15s}
+  .modepill button:hover{color:var(--text)}
+  .modepill button.on{background:var(--primary);color:#fff}
+  .iconbtn{width:40px;height:40px;border-radius:11px;border:1px solid var(--line-2);background:var(--surface);
+    color:var(--text);cursor:pointer;font-size:16px;transition:.16s}
+  .iconbtn:hover{border-color:var(--primary);color:var(--primary)}
+
+  /* map overlay state chip (e.g. waiting for boats / disconnected) */
+  .v-mapnote{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:500;
+    display:none;align-items:center;gap:8px;padding:9px 16px;border-radius:999px;
+    background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);
+    font:600 12px 'Space Grotesk';color:var(--text);letter-spacing:.02em}
+  .v-mapnote.show{display:inline-flex}
+  .v-mapnote .sp{width:13px;height:13px;border:2px solid var(--accsoft);border-top-color:var(--primary);
+    border-radius:50%;animation:srt-sp .75s linear infinite}
+  .v-mapnote.warn{border-color:var(--red);color:var(--red)}
+
+  /* phone: stack map on top, panel scrolls below */
+  @media(max-width:760px){
+    .v-main{flex-direction:column}
+    .v-map{flex:none;height:48vh;min-height:240px;order:-1}
+    .v-side{width:100%;border-right:none;border-top:1px solid var(--line);overflow-y:auto}
+    .v-lbwrap{padding-top:14px}
+    .v-lbw{overflow:visible}
+    .srt-hdr .title{display:none}
+    .srt-hdr{gap:10px;padding:0 14px}
+    .v-ctrl{flex-wrap:wrap;padding:12px 14px;gap:10px;min-height:0}
+    .v-pw{order:3;flex-basis:100%}
+    .modepill button span.lbl{display:none}
+  }
+  /* big club-TV screen: scale up panel + type for legibility from across the room */
+  @media(min-width:1700px){
+    .v-side{width:400px}
+    .v-rna{font-size:16px} .lb-row{font-size:15px}
+    .v-wspd{font-size:26px}
+    .srt-hdr{height:72px}.srt-hdr .logo{height:40px}
+    .srt-hdr .title{font-size:16px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="srt-hdr">
+    <img class="logo" src="assets/logo-light.svg" alt="Sail Race Tracker" id="logo">
+    <div class="title" id="title">Select a race</div>
+    <div class="spacer"></div>
+    <span class="badge draft" id="statusBadge" style="display:none">DRAFT</span>
+    <span class="conn closed" id="conn" style="display:none"><span class="dot"></span><span id="connTxt">offline</span></span>
+    <div class="modepill" id="modePill" style="display:none">
+      <button data-mode="live" id="mLive"><span>●</span><span class="lbl">Live</span></button>
+      <button data-mode="replay" id="mReplay"><span>⟲</span><span class="lbl">Replay</span></button>
+    </div>
+    <button class="iconbtn" id="themeBtn" title="Toggle light / dark" aria-label="Toggle light or dark theme">◐</button>
+  </header>
+
+  <div class="v-main">
+    <aside class="v-side">
+      <div class="v-sec"><div class="sl">Races</div><div id="raceList">
+        <div class="skel-row"><span class="skel r"></span><span class="skel n"></span><span class="skel t"></span></div>
+        <div class="skel-row"><span class="skel r"></span><span class="skel n"></span><span class="skel t"></span></div>
+      </div></div>
+      <div class="v-sec"><div class="sl">Race info</div><div id="info"><div class="empty">—</div></div></div>
+      <div class="v-sec">
+        <div class="sl">Conditions</div>
+        <div class="v-cond">
+          <canvas class="v-windcanvas" id="windDial" width="54" height="54" aria-label="Wind direction dial"></canvas>
+          <div><div class="v-wspd" id="windDir">—</div><div class="v-wdir" id="windTxt">est. from course</div></div>
+        </div>
+      </div>
+      <div class="v-sec v-lbwrap">
+        <div class="v-lbhd"><div class="sl">Leaderboard</div><span class="v-lbcount" id="lbCount" style="display:none">0</span></div>
+        <div class="v-lbw"><div id="lb"><div class="empty"><span class="ic">⛵</span>No boats yet</div></div></div>
+      </div>
+    </aside>
+    <div class="v-map" id="map">
+      <div class="v-mapnote" id="mapNote"><span class="sp" id="mapNoteSp"></span><span id="mapNoteTxt"></span></div>
+    </div>
+  </div>
+
+  <div class="v-ctrl hidden" id="ctrl">
+    <button class="v-cb" id="rst" title="Restart" aria-label="Restart replay">⏮</button>
+    <button class="v-cb on" id="play" title="Play / pause" aria-label="Play or pause replay">⏸</button>
+    <div class="v-pw">
+      <input type="range" class="v-pg" id="pg" min="0" max="1000" value="0" aria-label="Replay timeline">
+      <div class="v-ti"><span id="tc">0:00</span><span id="td">—:——</span></div>
+    </div>
+    <div class="v-spd">
+      <button class="v-sbtn" data-s="2">2×</button>
+      <button class="v-sbtn on" data-s="5">5×</button>
+      <button class="v-sbtn" data-s="15">15×</button>
+      <button class="v-sbtn" data-s="30">30×</button>
+    </div>
+  </div>
+
+  <div class="srt-load" id="load"><div class="srt-spin"></div><div class="ld-txt">Loading race</div></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="shared/srt-api.js"></script>
+<script src="shared/srt-map.js"></script>
+<script>
+(function(){
+  'use strict';
+  const M = SrtMap, $ = id => document.getElementById(id);
+  const qs = new URLSearchParams(location.search);
+  const api = new SrtApi({ base: qs.get('base') || SRT_DEFAULT_BASE });
+
+  // theme — light by default (matches sailracetracker.live); ?theme=dark for broadcast mode
+  if (qs.get('theme') === 'dark') document.documentElement.classList.remove('light');
+  if (qs.get('theme') === 'light') document.documentElement.classList.add('light');
+  let dark = !document.documentElement.classList.contains('light');
+  function syncLogo(){ $('logo').src = dark ? 'assets/logo-light.svg' : 'assets/logo.svg'; }
+  syncLogo();
+  $('themeBtn').onclick = () => {
+    document.documentElement.classList.toggle('light');
+    dark = !document.documentElement.classList.contains('light');
+    syncLogo(); applyTiles(); if (rd) drawCond();
+  };
+
+  // map state
+  let map, tiles=null;
+  let rd = null;            // { race, course(SrtCourse), boats[], boatByNode{} }
+  let live = null;          // SrtLive
+  let mode = 'live';        // 'live' | 'replay'
+  let mkr = {};             // node_id -> marker
+  let trail = {};           // node_id -> { latlngs:[], poly }
+  let liveLatest = {};      // node_id -> position (for leaderboard)
+
+  function initMap(){
+    map = L.map('map', { center:[50.762,-1.291], zoom:14, zoomControl:true, attributionControl:true });
+    map.zoomControl.setPosition('topright');
+    applyTiles();
+  }
+  function applyTiles(){ if(tiles) tiles.remove(); tiles = M.tileLayer(map, dark); }
+
+  // ---- race list ----
+  async function loadRaces(){
+    let data;
+    try { data = await api.listRaces(); }
+    catch(e){ $('raceList').innerHTML = `<div class="empty"><span class="ic">⚠</span>Could not reach the server.<br>${esc(e.message)}</div>`; return; }
+    const races = data.races || [];
+    if (!races.length){ $('raceList').innerHTML = '<div class="empty"><span class="ic">⛵</span>No races yet</div>'; return; }
+    $('raceList').innerHTML = '';
+    races.forEach((r,i)=>{
+      const b = document.createElement('button');
+      b.className = 'v-rb' + (rd && rd.race.id===r.id ? ' on':'');
+      b.dataset.id = r.id;
+      const stLabel = r.status==='running' ? 'live' : r.status;
+      b.innerHTML = `<div class="v-rn">${i+1}</div><div class="v-ri">
+        <div class="v-rna">${esc(r.name)}</div>
+        <div class="v-rsu"><span class="venue">${esc(r.venue||'—')}</span> <span class="badge ${r.status}">${stLabel}</span></div></div>`;
+      b.onclick = () => selectRace(r.id);
+      $('raceList').appendChild(b);
+    });
+    // auto-select from URL or first race
+    const want = parseInt(qs.get('race'),10);
+    const pick = races.find(r=>r.id===want) || races[0];
+    if (!rd) selectRace(pick.id);
+  }
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+  // ---- select + load a race ----
+  async function selectRace(id){
+    if (live){ live.stop(); live=null; }
+    stopReplay();
+    let detail;
+    try { detail = await api.getRace(id); }
+    catch(e){ toast('Failed to load race: '+e.message, 'err'); return; }
+
+    const course = new M.SrtCourse(detail.course);
+    const boats = detail.boats || [];
+    const boatByNode = {};
+    boats.forEach((b,i)=>{ b._colour = M.boatColour(b, i); if (b.node_id!=null) boatByNode[b.node_id]=b; });
+    rd = { race: detail.race, course, boats, boatByNode };
+
+    // mark active in picker
+    document.querySelectorAll('.v-rb').forEach(el=>el.classList.toggle('on', +el.dataset.id===id));
+
+    // header
+    $('title').innerHTML = `<b>${esc(detail.race.name)}</b> · ${esc(detail.race.venue||'')}`;
+    $('statusBadge').style.display='';
+    $('modePill').style.display='';
+
+    // draw course + reset boats
+    clearBoats();
+    course.draw(map, { dark });
+    const bnds = course.bounds();
+    if (bnds) map.fitBounds(bnds.pad(0.4)); else map.setView([50.762,-1.291],14);
+    setTimeout(()=>map.invalidateSize(),60);
+
+    drawInfo(); drawCond(); renderLeaderboard([]);
+
+    // choose mode: finished -> replay, otherwise live
+    const wantMode = qs.get('mode');
+    setMode(wantMode || (detail.race.status==='finished' ? 'replay' : 'live'));
+
+    $('load').classList.add('gone');
+  }
+
+  function clearBoats(){
+    Object.values(mkr).forEach(m=>m.remove());
+    Object.values(trail).forEach(t=>t.poly && t.poly.remove());
+    mkr={}; trail={}; liveLatest={};
+  }
+
+  function ensureBoat(nodeId){
+    if (mkr[nodeId]) return;
+    const boat = rd.boatByNode[nodeId];
+    const colour = boat ? boat._colour : M.BOAT_PALETTE[(nodeId-1+M.BOAT_PALETTE.length)%M.BOAT_PALETTE.length];
+    const label = boat ? (boat.sail_number || boat.name || ('Node '+nodeId)) : ('Node '+nodeId);
+    const m = L.marker([0,0], { icon: M.boatIcon(colour,0), zIndexOffset:1000, opacity:0 }).addTo(map);
+    m.bindTooltip(esc(label), { permanent:true, direction:'right', offset:[10,0], className:'srt-boat-lbl' });
+    mkr[nodeId] = m;
+    trail[nodeId] = { latlngs:[], poly: L.polyline([], { color:colour, weight:3, opacity:.6 }).addTo(map) };
+  }
+
+  function placeBoat(nodeId, lat, lon, cog){
+    ensureBoat(nodeId);
+    const boat = rd.boatByNode[nodeId];
+    const colour = boat ? boat._colour : M.BOAT_PALETTE[(nodeId-1+M.BOAT_PALETTE.length)%M.BOAT_PALETTE.length];
+    const tr = trail[nodeId];
+    const last = tr.latlngs[tr.latlngs.length-1];
+    let hdg = cog;
+    if (hdg==null && last) hdg = M.brg(last[0],last[1],lat,lon);
+    mkr[nodeId].setIcon(M.boatIcon(colour, hdg||0));
+    mkr[nodeId].setLatLng([lat,lon]); mkr[nodeId].setOpacity(1);
+    tr.latlngs.push([lat,lon]);
+    if (tr.latlngs.length>400) tr.latlngs.splice(0, tr.latlngs.length-400);
+    tr.poly.setLatLngs(tr.latlngs);
+  }
+
+  // ---- info + conditions ----
+  function drawInfo(){
+    const r = rd.race, c = rd.course;
+    const startTxt = r.start_time ? new Date(r.start_time).toLocaleString() : '—';
+    $('info').innerHTML = `
+      <div class="ir"><span class="l">Boats</span><span class="v">${rd.boats.length}</span></div>
+      <div class="ir"><span class="l">Course</span><span class="v">${esc(c.raw.name||'—')}</span></div>
+      <div class="ir"><span class="l">Marks</span><span class="v">${c.marks.length}</span></div>
+      <div class="ir"><span class="l">Legs</span><span class="v">${c.legMarks.length}</span></div>
+      <div class="ir"><span class="l">Start</span><span class="v" style="font-size:12px">${startTxt}</span></div>`;
+  }
+  function drawCond(){
+    const wf = rd.course.windFrom();
+    M.drawWindDial($('windDial'), wf, dark);
+    $('windDir').textContent = M.deg2dir(wf);
+    $('windTxt').textContent = `from ${Math.round(wf)}° · est. from course`;
+  }
+
+  // ---- leaderboard (shared by live + replay) ----
+  // positionsByNode: { node_id: {lat,lon,history:[{lat,lon}]} }
+  function renderLeaderboard(rows){
+    const cEl = $('lbCount');
+    if (!rows.length){
+      $('lb').innerHTML = '<div class="empty"><span class="ic">⛵</span>No boats yet</div>';
+      if (cEl) cEl.style.display='none';
+      return;
+    }
+    rows.sort((a,b)=>{
+      if (a.fin && b.fin) return a.finIdx-b.finIdx;
+      if (a.fin) return -1; if (b.fin) return 1;
+      if (a.leg!==b.leg) return b.leg-a.leg;
+      return a.dist-b.dist;
+    });
+    if (cEl){ cEl.textContent = rows.length; cEl.style.display=''; }
+    let html='';
+    rows.forEach((r,i)=>{
+      const pc = ['p1','p2','p3'][i]||'';
+      const lab = r.fin ? 'FIN' : (r.legLabel||'—');
+      const fc = r.fin ? 'fin':'';
+      const dm = r.fin ? '' : (r.dist<1000 ? Math.round(r.dist)+'m' : (r.dist/1000).toFixed(1)+'k');
+      const sail = r.sail ? `<span class="lb-sail">${esc(r.sail)}</span>` : '';
+      html += `<div class="lb-row${i===0?' lead':''}"><div class="lb-rank ${pc}">${i+1}</div>
+        <div class="lb-dot" style="background:${r.colour}"></div>
+        <div class="lb-name">${esc(r.name)}${sail}</div>
+        <div class="lb-leg ${fc}">${esc(lab)}</div><div class="lb-d">${dm}</div></div>`;
+    });
+    $('lb').innerHTML = html;
+  }
+
+  // map status chip (waiting for boats / disconnected)
+  function setMapNote(txt, kind){
+    const el = $('mapNote'), sp = $('mapNoteSp');
+    if (!txt){ el.classList.remove('show'); return; }
+    $('mapNoteTxt').textContent = txt;
+    el.classList.toggle('warn', kind==='warn');
+    sp.style.display = kind==='warn' ? 'none' : '';
+    el.classList.add('show');
+  }
+
+  function buildRows(byNode){
+    const targets = rd.course.legTargets();
+    const NL = targets.length;
+    const rows = [];
+    Object.keys(byNode).forEach(nid=>{
+      const st = byNode[nid];
+      const boat = rd.boatByNode[nid];
+      const colour = boat ? boat._colour : M.BOAT_PALETTE[(+nid-1+M.BOAT_PALETTE.length)%M.BOAT_PALETTE.length];
+      const name = boat ? (boat.name || boat.sail_number || ('Node '+nid)) : ('Node '+nid);
+      const sail = boat ? (boat.sail_number||'') : '';
+      const hist = (st.history || [{lat:st.lat,lon:st.lon}]).filter(h=>validCoord(h.lat,h.lon));
+      const { leg, finished } = NL ? M.computeLeg(hist, targets) : { leg:0, finished:false };
+      const cur = targets[Math.min(leg, NL-1)];
+      const dist = (finished || !cur || !validCoord(st.lat,st.lon)) ? 0 : M.distM(st.lat, st.lon, cur.lat, cur.lon);
+      rows.push({ name, sail, colour, leg, legLabel: targets[Math.min(leg,NL-1)] && targets[Math.min(leg,NL-1)].label,
+        dist, fin: finished, finIdx: st.finIdx||0 });
+    });
+    return rows;
+  }
+
+  // =========================================================================
+  // LIVE MODE
+  // =========================================================================
+  function setMode(m){
+    mode = m;
+    $('mLive').classList.toggle('on', m==='live');
+    $('mReplay').classList.toggle('on', m==='replay');
+    if (m==='live') startLive(); else { if(live){live.stop();live=null;} startReplay(); }
+  }
+  $('modePill').querySelectorAll('button').forEach(b=> b.onclick=()=>setMode(b.dataset.mode));
+
+  function setStatusBadge(status){
+    const b = $('statusBadge');
+    b.className = 'badge ' + status;
+    b.textContent = (status==='running') ? 'LIVE' : status.toUpperCase();
+    b.style.display='';
+  }
+
+  function startLive(){
+    stopReplay();
+    $('ctrl').classList.add('hidden');
+    clearBoats();
+    setStatusBadge(rd.race.status);
+    $('conn').style.display='';
+    rd.course.draw(map,{dark});
+    liveLatest = {};
+    setMapNote('Connecting…');
+    live = new SrtLive(api, rd.race.id, {
+      onStatus(s){
+        const c=$('conn'); c.className='conn '+s; $('connTxt').textContent=s;
+        if (mode!=='live') return;
+        if (s==='connecting') setMapNote('Connecting…');
+        else if (s==='closed') setMapNote('Connection lost — reconnecting…','warn');
+        else if (s==='open' && !Object.keys(liveLatest).length) setMapNote('Waiting for boats…');
+      },
+      onSnapshot(ps){ ps.forEach(applyLivePos); refreshLiveLB(); if(Object.keys(liveLatest).length) setMapNote(''); },
+      onFix(p){ applyLivePos(p); refreshLiveLB(); if(Object.keys(liveLatest).length) setMapNote(''); },
+      onState(st){ rd.race.status=st; setStatusBadge(st);
+        if (st==='finished'){ toast('Race finished — replay available','ok'); } },
+    });
+    live.start();
+  }
+
+  function validCoord(lat,lon){
+    return typeof lat==='number' && typeof lon==='number' && isFinite(lat) && isFinite(lon)
+      && !(lat===0 && lon===0) && Math.abs(lat)<=90 && Math.abs(lon)<=180;
+  }
+
+  function nearCourse(lat,lon){
+    const cb = rd && rd.course.bounds();
+    if (!cb) return true;
+    const c = cb.getCenter();
+    return M.distM(lat, lon, c.lat, c.lng) < 50000;  // 50 km of the course
+  }
+
+  function applyLivePos(p){
+    if (!validCoord(p.lat, p.lon) || !nearCourse(p.lat, p.lon)) return;
+    placeBoat(p.node_id, p.lat, p.lon, p.cog);
+    const prev = liveLatest[p.node_id];
+    const history = prev ? prev.history : [];
+    history.push({ lat:p.lat, lon:p.lon });
+    if (history.length>500) history.splice(0, history.length-500);
+    liveLatest[p.node_id] = { lat:p.lat, lon:p.lon, sog:p.sog, history };
+  }
+  let lbThrottle = 0;
+  function refreshLiveLB(){
+    const now = Date.now();
+    if (now - lbThrottle < 400) return; lbThrottle = now;
+    renderLeaderboard(buildRows(liveLatest));
+  }
+
+  // =========================================================================
+  // REPLAY MODE  (downsampled tracks + scrubber + speed)
+  // =========================================================================
+  let rep = null;  // { boats:[{nodeId,colour,name,sail,pts:[{t,lat,lon}],legTimeline}], t0, t1, dur, raf }
+  let playing=false, clock=0, speed=5, lastTs=null, scrubbing=false, repRaf=null;
+
+  function stopReplay(){
+    if (repRaf){ cancelAnimationFrame(repRaf); repRaf=null; }
+    playing=false; lastTs=null;
+  }
+
+  async function startReplay(){
+    setStatusBadge('replay'); $('statusBadge').textContent='REPLAY';
+    $('conn').style.display='none';
+    $('ctrl').classList.remove('hidden');
+    clearBoats(); rd.course.draw(map,{dark});
+    setMapNote('Loading track data…');
+    let data;
+    try { data = await api.getTracks(rd.race.id); }
+    catch(e){ setMapNote('No track data available','warn'); toast('No track data: '+e.message,'err'); return; }
+    const tracks = data.tracks || {};
+    // Clean each track: drop invalid/null-island coords. Then keep only tracks
+    // with enough points to be a real boat (filters stray GPS noise that would
+    // otherwise blow out the replay timeline).
+    let cleaned = Object.keys(tracks).map(nid=>({
+      nid,
+      pts: tracks[nid].map(p=>({ t:p.ts_ms, lat:p.lat, lon:p.lon, cog:p.cog })).filter(p=>validCoord(p.lat,p.lon)),
+    })).filter(x=>x.pts.length>0);
+    // Spatial outlier filter: drop tracks whose first point is far from the
+    // course (stray GPS / a node from a different venue leaking onto this race).
+    const cb = rd.course.bounds();
+    if (cb){
+      const c = cb.getCenter();
+      cleaned = cleaned.filter(x=>{
+        const p = x.pts[0];
+        return M.distM(p.lat, p.lon, c.lat, c.lng) < 50000;  // within 50 km of the course
+      });
+    }
+    const maxLen = cleaned.reduce((m,x)=>Math.max(m,x.pts.length),0);
+    const real = cleaned.filter(x=>x.pts.length >= Math.max(3, maxLen*0.25));
+    const use = real.length ? real : cleaned;
+    if (!use.length){ setMapNote('No recorded track yet','warn'); renderLeaderboard([]); return; }
+    setMapNote('');
+
+    let t0=Infinity, t1=-Infinity;
+    const boats = use.map(({nid,pts})=>{
+      pts.forEach(p=>{ if(p.t<t0)t0=p.t; if(p.t>t1)t1=p.t; });
+      const boat = rd.boatByNode[nid];
+      return {
+        nodeId:+nid,
+        colour: boat ? boat._colour : M.BOAT_PALETTE[(+nid-1+M.BOAT_PALETTE.length)%M.BOAT_PALETTE.length],
+        name: boat ? (boat.name||boat.sail_number||('Node '+nid)) : ('Node '+nid),
+        sail: boat ? (boat.sail_number||'') : '',
+        pts,
+      };
+    });
+    rep = { boats, t0, t1, dur: Math.max(1, t1-t0) };
+    clock = 0; speed = 5; setSpeedBtns(5); setPlay(true);
+    boats.forEach(b=>ensureBoat(b.nodeId));
+    seekReplay(0);
+    repRaf = requestAnimationFrame(replayLoop);
+  }
+
+  function posAt(b, tms){
+    const pts=b.pts;
+    if (!pts.length) return null;
+    if (tms<=pts[0].t) return { lat:pts[0].lat, lon:pts[0].lon, cog:pts[0].cog, idx:0 };
+    if (tms>=pts[pts.length-1].t) { const p=pts[pts.length-1]; return { lat:p.lat, lon:p.lon, cog:p.cog, idx:pts.length-1 }; }
+    let lo=0,hi=pts.length-1;
+    while(hi-lo>1){ const mid=(lo+hi)>>1; if(pts[mid].t<=tms) lo=mid; else hi=mid; }
+    const a=pts[lo], c=pts[hi]; const f=(tms-a.t)/Math.max(1,c.t-a.t);
+    return { lat:M.lerp(a.lat,c.lat,f), lon:M.lerp(a.lon,c.lon,f),
+      cog: a.cog!=null?a.cog:(c.cog), idx:lo };
+  }
+
+  function seekReplay(frac){
+    if (!rep) return;
+    clock = Math.max(0, Math.min(1, frac)) * rep.dur;
+    renderReplay();
+  }
+  function renderReplay(){
+    const tms = rep.t0 + clock;
+    const byNode = {};
+    rep.boats.forEach(b=>{
+      const p = posAt(b, tms);
+      if (!p) return;
+      placeBoat(b.nodeId, p.lat, p.lon, p.cog);
+      // leaderboard history up to current idx
+      const hist = b.pts.slice(0, p.idx+1).map(x=>({lat:x.lat,lon:x.lon}));
+      hist.push({lat:p.lat,lon:p.lon});
+      byNode[b.nodeId] = { lat:p.lat, lon:p.lon, history:hist };
+    });
+    renderLeaderboard(buildRows(byNode));
+    // HUD
+    const frac = clock/rep.dur;
+    $('pg').value = Math.round(frac*1000);
+    $('pg').style.setProperty('--pct', (frac*100)+'%');
+    $('tc').textContent = M.fmtClock(clock/1000);
+    $('td').textContent = M.fmtClock(rep.dur/1000);
+  }
+  function replayLoop(ts){
+    if (rep && playing && !scrubbing){
+      if (lastTs!=null){
+        const dt = (ts-lastTs)/1000;
+        clock = Math.min(clock + dt*1000*speed, rep.dur);
+        renderReplay();
+        if (clock>=rep.dur){ playing=false; setPlay(false); }
+      }
+      lastTs = ts;
+    } else lastTs = ts;
+    repRaf = requestAnimationFrame(replayLoop);
+  }
+  function setPlay(on){ playing=on; const b=$('play'); b.textContent=on?'⏸':'▶'; b.classList.toggle('on',on); }
+  function setSpeedBtns(s){ document.querySelectorAll('.v-sbtn').forEach(x=>x.classList.toggle('on', +x.dataset.s===s)); }
+
+  $('play').onclick = ()=>{ if(!rep) return; if(clock>=rep.dur) clock=0; setPlay(!playing); };
+  $('rst').onclick = ()=>{ if(!rep) return; clock=0; renderReplay(); setPlay(true); };
+  $('pg').addEventListener('mousedown',()=>scrubbing=true);
+  $('pg').addEventListener('touchstart',()=>scrubbing=true,{passive:true});
+  $('pg').addEventListener('mouseup',()=>scrubbing=false);
+  $('pg').addEventListener('touchend',()=>scrubbing=false);
+  $('pg').addEventListener('input',()=>{ if(rep){ seekReplay(+$('pg').value/1000); } });
+  document.querySelectorAll('.v-sbtn').forEach(b=> b.onclick=()=>{ speed=+b.dataset.s; setSpeedBtns(speed); });
+
+  // ---- toast ----
+  let toastT;
+  function toast(msg, kind){
+    let el = document.querySelector('.srt-toast');
+    if (!el){ el=document.createElement('div'); el.className='srt-toast'; document.body.appendChild(el); }
+    el.textContent = msg; el.className = 'srt-toast show ' + (kind||'');
+    clearTimeout(toastT); toastT = setTimeout(()=>el.classList.remove('show'), 3200);
+  }
+
+  window.addEventListener('resize', ()=>{ if(map) map.invalidateSize(); });
+
+  // ---- boot ----
+  initMap();
+  loadRaces();
+  setInterval(()=>{ if(!rd) return; /* keep race list status fresh */ }, 30000);
+})();
+</script>
+</body>
+</html>

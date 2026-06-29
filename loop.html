@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sail Race Tracker — Loop</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+/* ===========================================================================
+   Standalone full-window race-replay loop for the studio TV.
+   Same rendering as the site's Live Tracker, but the map fills the whole
+   screen, no marketing chrome, and an auto-director runs the loop hands-free.
+   =========================================================================== */
+:root{
+  /* dark (default) */
+  --t-bg:#0f1924; --t-panel:#0d1f30; --t-hdr:#0b2c4a;
+  --t-brd:rgba(255,255,255,.10); --t-line2:rgba(255,255,255,.16);
+  --t-acc:#3b9eda; --t-acc2:#5cc8ff;
+  --t-txt:#e8f0f8; --t-mut:#8fb0c4; --t-grn:#4caf50;
+  --t-surface:rgba(255,255,255,.05); --t-surface2:rgba(255,255,255,.09);
+  --t-accsoft:rgba(59,158,218,.18); --t-accline:rgba(59,158,218,.5);
+  --t-grnsoft:rgba(76,175,80,.2);
+}
+html.light{
+  --t-bg:#e9f0f7; --t-panel:#ffffff; --t-hdr:#f6fafe;
+  --t-brd:rgba(16,44,74,.13); --t-line2:rgba(16,44,74,.18);
+  --t-acc:#1f6fdc; --t-acc2:#0c8fd0;
+  --t-txt:#10243a; --t-mut:#5f7488; --t-grn:#1f9d57;
+  --t-surface:rgba(16,44,74,.045); --t-surface2:rgba(16,44,74,.085);
+  --t-accsoft:rgba(31,111,220,.12); --t-accline:rgba(31,111,220,.45);
+  --t-grnsoft:rgba(31,157,87,.16);
+}
+html.light #trk .trkbadge{background:#1a5276;color:#aed6f1}
+html.light #trk .leaflet-tooltip{background:rgba(255,255,255,.95);border:1px solid rgba(31,111,220,.35);color:#10243a;box-shadow:0 2px 8px rgba(16,44,74,.18)}
+html.light #trk .leaflet-tooltip-top::before{border-top-color:rgba(31,111,220,.35)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--t-bg);overflow:hidden}
+#trk{
+  position:fixed; inset:0; display:flex; flex-direction:column;
+  background:var(--t-bg); color:var(--t-txt);
+  font-family:'Inter','Segoe UI',system-ui,sans-serif; font-size:15px; line-height:1.4;
+}
+#trk button{font-family:inherit}
+
+/* header bar */
+#trk .trk-hdr{height:58px;background:var(--t-hdr);border-bottom:1px solid var(--t-brd);
+  display:flex;align-items:center;gap:14px;padding:0 22px;flex-shrink:0}
+#trk .trk-logo{font-size:20px;font-weight:700;color:var(--t-acc2);white-space:nowrap;letter-spacing:.2px}
+#trk .trk-logo span{color:var(--t-txt);font-weight:400}
+#trk .trk-title{font-size:15px;font-weight:500;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--t-txt)}
+#trk .trkbadge{font-size:12px;font-weight:700;padding:4px 12px;border-radius:4px;letter-spacing:.5px;white-space:nowrap;flex-shrink:0;background:#1a5276;color:#aed6f1}
+
+/* layout */
+#trk .trk-main{flex:1;display:flex;min-height:0}
+#trk .trk-sb{width:280px;background:var(--t-panel);border-right:1px solid var(--t-brd);
+  display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+#trk .trk-ss{padding:14px 16px;border-bottom:1px solid var(--t-brd);flex-shrink:0}
+#trk .trk-sl{font-size:11px;font-weight:600;letter-spacing:1.2px;color:var(--t-mut);text-transform:uppercase;margin-bottom:10px}
+#trk .trk-lbwrap{flex:1;display:flex;flex-direction:column;overflow:hidden;border-bottom:none;padding:14px 0 0 0}
+
+/* race selector buttons */
+#trk .trk-rb{width:100%;display:flex;align-items:center;gap:11px;padding:10px 11px;margin-bottom:7px;
+  background:var(--t-surface);border:1px solid var(--t-brd);border-radius:7px;color:var(--t-mut);
+  cursor:pointer;transition:all .13s;text-align:left}
+#trk .trk-rb.on{background:var(--t-accsoft);border-color:var(--t-accline);color:var(--t-txt)}
+#trk .trk-rb:last-child{margin-bottom:0}
+#trk .trk-rn{width:26px;height:26px;border-radius:5px;background:var(--t-surface2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+#trk .trk-rb.on .trk-rn{background:var(--t-acc);color:#fff}
+#trk .trk-ri{flex:1;min-width:0}
+#trk .trk-rna{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#trk .trk-rsu{font-size:12px;color:var(--t-mut);margin-top:1px}
+
+/* info rows */
+#trk .trk-ir{display:flex;justify-content:space-between;font-size:13px;padding:4px 0}
+#trk .trk-ir .l{color:var(--t-mut)} #trk .trk-ir .v{font-weight:500}
+
+/* wind */
+#trk .trk-ww{display:flex;align-items:center;gap:12px}
+#trk .trk-wspd{font-size:20px;font-weight:600;color:var(--t-acc2);line-height:1}
+#trk .trk-wdir{font-size:12px;color:var(--t-mut);margin-top:3px}
+
+/* leaderboard */
+#trk .trk-lbw{flex:1;overflow-y:auto}
+#trk .trk-lbw::-webkit-scrollbar{width:5px}
+#trk .trk-lbw::-webkit-scrollbar-thumb{background:var(--t-line2);border-radius:2px}
+#trk .trk-lbr{display:flex;align-items:center;padding:8px 16px;gap:8px;font-size:13px;border-bottom:1px solid var(--t-surface);transition:all .25s}
+#trk .trk-lbk{width:18px;text-align:center;font-weight:700;color:var(--t-mut);flex-shrink:0}
+#trk .trk-lbk.p1{color:#ffd700} #trk .trk-lbk.p2{color:#b0b8c0} #trk .trk-lbk.p3{color:#cd8a56}
+#trk .trk-lbd{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+#trk .trk-lbn{flex:1;font-weight:500;font-size:13px}
+#trk .trk-lblab{font-size:11px;font-weight:600;padding:3px 7px;border-radius:4px;background:var(--t-surface2);color:var(--t-mut);white-space:nowrap;flex-shrink:0}
+#trk .trk-lblab.fin{background:var(--t-grnsoft);color:var(--t-grn)}
+#trk .trk-lbd2{font-size:12px;color:var(--t-mut);width:44px;text-align:right;flex-shrink:0}
+
+/* map */
+#trk .trk-map{flex:1;min-width:0;background:#0a1620}
+html.light #trk .trk-map{background:#d6e2ee}
+
+/* controls */
+#trk .trk-ctrl{height:62px;background:var(--t-hdr);border-top:1px solid var(--t-brd);display:flex;align-items:center;padding:0 20px;gap:14px;flex-shrink:0}
+#trk .trk-cb{width:40px;height:40px;border-radius:7px;border:1px solid var(--t-brd);background:var(--t-surface);color:var(--t-txt);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;transition:all .13s;flex-shrink:0}
+#trk .trk-cb.on{background:var(--t-acc);border-color:var(--t-acc)}
+#trk .trk-pw{flex:1;display:flex;flex-direction:column;gap:5px}
+#trk .trk-pg{-webkit-appearance:none;appearance:none;width:100%;height:5px;border-radius:3px;background:var(--t-line2);outline:none;cursor:pointer}
+#trk .trk-pg::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--t-acc2);cursor:pointer}
+#trk .trk-pg::-moz-range-thumb{width:16px;height:16px;border:none;border-radius:50%;background:var(--t-acc2);cursor:pointer}
+#trk .trk-ti{display:flex;justify-content:space-between;font-size:12px;color:var(--t-mut)}
+#trk .trk-spd{display:flex;gap:6px;flex-shrink:0}
+#trk .trk-sbtn{padding:6px 11px;border-radius:5px;border:1px solid var(--t-brd);background:var(--t-surface);color:var(--t-mut);font-size:13px;font-weight:600;cursor:pointer;transition:all .13s}
+#trk .trk-sbtn.on{background:var(--t-accsoft);border-color:var(--t-acc);color:var(--t-acc2)}
+
+/* loading overlay */
+#trk .trk-load{position:absolute;inset:0;background:var(--t-bg);display:flex;align-items:center;justify-content:center;z-index:600}
+#trk .trk-load.gone{display:none}
+#trk .trk-sp{width:38px;height:38px;border:4px solid rgba(59,158,218,.2);border-top-color:var(--t-acc);border-radius:50%;animation:trk-sp .75s linear infinite}
+@keyframes trk-sp{to{transform:rotate(360deg)}}
+
+/* leaflet theming */
+#trk .leaflet-tooltip{background:rgba(11,44,74,.92);border:1px solid rgba(59,158,218,.4);color:#e8f0f8;font-family:'Inter',sans-serif;font-size:13px;padding:4px 9px;border-radius:5px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+#trk .leaflet-tooltip-top::before{border-top-color:rgba(59,158,218,.4)}
+#trk .leaflet-control-zoom{display:none}  /* hide +/- for a clean broadcast frame */
+#trk .leaflet-control-attribution{font-size:9px;opacity:.5}
+</style>
+</head>
+<body>
+<div id="trk">
+  <div class="trk-hdr">
+    <div class="trk-logo">Sail<span>Race</span>Tracker</div>
+    <div class="trk-title" id="trkTitle">—</div>
+    <div class="trkbadge">RAYC · Auckland</div>
+  </div>
+  <div class="trk-main">
+    <div class="trk-sb">
+      <div class="trk-ss"><div class="trk-sl">Select Race</div><div id="trkRbtns"></div></div>
+      <div class="trk-ss"><div class="trk-sl">Race Info</div><div id="trkInfo"></div></div>
+      <div class="trk-ss">
+        <div class="trk-sl">Conditions</div>
+        <div class="trk-ww">
+          <canvas id="trkWc" width="48" height="48" role="img" aria-label="Wind direction dial"></canvas>
+          <div><div class="trk-wspd" id="trkWspd">—</div><div class="trk-wdir" id="trkWdir">—</div></div>
+        </div>
+      </div>
+      <div class="trk-ss trk-lbwrap">
+        <div class="trk-sl" style="padding:0 16px">Leaderboard</div>
+        <div class="trk-lbw" id="trkLbw"><div id="trkLb"></div></div>
+      </div>
+    </div>
+    <div class="trk-map" id="trkMap"></div>
+  </div>
+  <div class="trk-ctrl">
+    <button class="trk-cb" id="trkRst" title="Restart">⏮</button>
+    <button class="trk-cb on" id="trkPlay" title="Play / pause">⏸</button>
+    <div class="trk-pw">
+      <input type="range" class="trk-pg" id="trkPg" min="0" max="1000" value="0" aria-label="Timeline">
+      <div class="trk-ti"><span id="trkTc">0:00</span><span id="trkTd">—:——</span></div>
+    </div>
+    <div class="trk-spd">
+      <button class="trk-sbtn" data-s="2">2×</button>
+      <button class="trk-sbtn on" data-s="5">5×</button>
+      <button class="trk-sbtn" data-s="15">15×</button>
+      <button class="trk-sbtn" data-s="30">30×</button>
+    </div>
+  </div>
+  <div class="trk-load" id="trkLoad"><div class="trk-sp"></div></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/tracker-data.js"></script>
+<script>
+// ============================================================================
+//  Full-window race replay + auto-director (hands-free loop for the studio TV)
+//  Render logic is the site's Live Tracker, dark theme forced, map fills frame.
+// ============================================================================
+(function () {
+  'use strict';
+  if (typeof RACES === 'undefined') { document.getElementById('trkLoad').textContent='Race data failed to load'; return; }
+
+  const COLORS = { blue:'#3498db', red:'#e74c3c', green:'#27ae60', orange:'#f39c12' };
+  const THEME = new URLSearchParams(location.search).get('theme') || 'dark';
+  const DARK = THEME !== 'light';
+  if(!DARK) document.documentElement.classList.add('light');
+
+  function distM(la1,lo1,la2,lo2){ const a=(la2-la1)*111320, b=(lo2-lo1)*89056; return Math.sqrt(a*a+b*b); }
+  function brg(la1,lo1,la2,lo2){ const a=(la2-la1)*111320, b=(lo2-lo1)*89056; return ((Math.atan2(b,a)*180/Math.PI)+360)%360; }
+  function deg2dir(d){ return ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(d/22.5)%16]; }
+  function fmtT(s){ s=Math.round(s); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
+  function lerp(a,b,t){ return a+(b-a)*t; }
+
+  function buildRace(rid){
+    const R = RACES[rid];
+    const MARKS = R.marks;
+    const SB=MARKS[0], SF=MARKS[1];
+    const LINE_MID = { lat:(SB.lat+SF.lat)/2, lon:(SB.lon+SF.lon)/2 };
+    const legMarks  = R.legMarks  || [2, 3, 'finish'];
+    const LEG_LBL   = R.legLabels || ['↑ Beat', '↗ Reach', '↘ Finish'];
+    const COURSE = legMarks.map(x => x==='finish' ? LINE_MID : MARKS[x]);
+    const NL = COURSE.length;
+    const outline = [[LINE_MID.lat,LINE_MID.lon]]
+      .concat(legMarks.filter(x=>x!=='finish').map(x=>[MARKS[x].lat,MARKS[x].lon]))
+      .concat([[LINE_MID.lat,LINE_MID.lon]]);
+    const dt = 10;
+    let ns = 0;
+    const boats = Object.keys(R.boats).map(id => {
+      const bd = R.boats[id];
+      const pos = bd.coords.map(c => ({ lat:c[1], lon:c[2] }));
+      ns = Math.max(ns, pos.length);
+      const hlog = [];
+      let lastH = brg(pos[0].lat,pos[0].lon, COURSE[0].lat, COURSE[0].lon);
+      for (let i=0;i<pos.length;i++){
+        for (let j=i+1;j<pos.length;j++){
+          if (distM(pos[i].lat,pos[i].lon,pos[j].lat,pos[j].lon) > 8){
+            lastH = brg(pos[i].lat,pos[i].lon,pos[j].lat,pos[j].lon); break;
+          }
+        }
+        hlog.push(lastH);
+      }
+      const llog = [];
+      let leg=0, cd=0, finStep=null;
+      for (let i=0;i<pos.length;i++){
+        llog.push(leg);
+        if (leg < NL){
+          if (cd>0) cd--;
+          const tgt = COURSE[leg];
+          if (cd===0 && distM(pos[i].lat,pos[i].lon,tgt.lat,tgt.lon) < 85){
+            leg++; cd=2;
+            if (leg>=NL) finStep=i;
+          }
+        }
+      }
+      return { id, name:bd.name, color:COLORS[bd.color]||bd.color, pos, hlog, llog, finStep };
+    });
+    const windFrom = brg(LINE_MID.lat,LINE_MID.lon, COURSE[0].lat,COURSE[0].lon);
+    const startTxt = Object.values(R.boats)[0].coords[0][0];
+    return { R, MARKS, SB, SF, LINE_MID, COURSE, NL, LEG_LBL, outline, boats, dt, ns, windFrom, startTxt };
+  }
+
+  let map, rd=null, raceId=null;
+  let bMkrs=[], traces=[], dMkrs=[], courseLines=[];
+  let playing=false, sf=0, pspd=5, tsl=null, scrub=false, lastLB=-1;
+  const $ = id => document.getElementById(id);
+  let tileLayer=null;
+
+  function applyTiles(){
+    const cfg = DARK
+      ? { url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', sub:'abcd', attr:'© OpenStreetMap, © CARTO' }
+      : { url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', sub:'abc', attr:'© OpenStreetMap contributors' };
+    if(tileLayer) tileLayer.remove();
+    tileLayer = L.tileLayer(cfg.url, { attribution:cfg.attr, subdomains:cfg.sub, maxZoom:19 }).addTo(map);
+  }
+  function initMap(){
+    map = L.map('trkMap', { center:[-36.8483,174.8139], zoom:16, zoomControl:false, attributionControl:true });
+    applyTiles();
+  }
+  function mkBoatIcon(color, hdgDeg){
+    return L.divIcon({ className:'', iconSize:[26,26], iconAnchor:[13,13],
+      html:`<div style="width:26px;height:26px;transform:rotate(${hdgDeg}deg)">
+        <svg width="26" height="26" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="10,2 15,18 10,14 5,18" fill="${color}" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg></div>` });
+  }
+  function mkMarkIcon(type){
+    const MAP = { cb:['#f39c12','CB'], pin:['#f39c12','1'], ww:['#e74c3c','2'], lee:['#9b59b6','3'], wing:['#3498db','4'] };
+    const [c,l] = MAP[type] || ['#888','?'];
+    return L.divIcon({ className:'', iconSize:[22,22], iconAnchor:[11,11],
+      html:`<div style="width:22px;height:22px;border-radius:50%;background:${c};border:2px solid rgba(255,255,255,.78);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;box-shadow:0 1px 6px rgba(0,0,0,.55)">${l}</div>` });
+  }
+  function drawCourseLayers(){
+    dMkrs.forEach(m=>m.remove()); dMkrs=[];
+    courseLines.forEach(l=>l.remove()); courseLines=[];
+    courseLines.push(L.polyline([[rd.SB.lat,rd.SB.lon],[rd.SF.lat,rd.SF.lon]], { color:'#f39c12', weight:4, opacity:.85 }).addTo(map));
+    const outlineCol = DARK ? 'rgba(255,255,255,.24)' : 'rgba(16,44,74,.32)';
+    courseLines.push(L.polyline(rd.outline,{ color:outlineCol, weight:2, dashArray:'5,7' }).addTo(map));
+    rd.MARKS.forEach(m => {
+      const mk = L.marker([m.lat,m.lon],{icon:mkMarkIcon(m.type),zIndexOffset:500}).addTo(map);
+      mk.bindTooltip(m.name,{permanent:false,direction:'top'});
+      dMkrs.push(mk);
+    });
+  }
+  function clearBoats(){ bMkrs.forEach(m=>m.remove()); traces.forEach(t=>t.remove()); bMkrs=[]; traces=[]; }
+
+  function loadRace(rid){
+    raceId = rid;
+    rd = buildRace(rid);
+    playing=false; sf=0; tsl=null; lastLB=-1;
+    setPlay(false);
+    clearBoats();
+    drawCourseLayers();
+    rd.boats.forEach(b => {
+      const mk = L.marker([b.pos[0].lat,b.pos[0].lon],{icon:mkBoatIcon(b.color,b.hlog[0]||0),zIndexOffset:1000}).addTo(map);
+      mk.bindTooltip(`<span style="color:${b.color}">${b.name}</span>`,{permanent:true,direction:'right',offset:[9,0]});
+      bMkrs.push(mk);
+      traces.push(L.polyline([],{color:b.color,weight:3,opacity:.65}).addTo(map));
+    });
+    buildRbtns(); updInfo();
+    render(0); updHUD(0); updLB(0);
+    map.fitBounds(L.latLngBounds(rd.MARKS.map(m=>[m.lat,m.lon])).pad(0.35));
+    setTimeout(()=>map.invalidateSize(),0);
+    playing=true; setPlay(true);
+  }
+  function render(s){
+    if(!rd) return;
+    const si=Math.min(Math.floor(s),rd.ns-1), si2=Math.min(si+1,rd.ns-1), t=s-si;
+    rd.boats.forEach((b,i)=>{
+      const Ln=b.pos.length;
+      const p1=b.pos[Math.min(si,Ln-1)], p2=b.pos[Math.min(si2,Ln-1)];
+      const la=lerp(p1.lat,p2.lat,t), lo=lerp(p1.lon,p2.lon,t);
+      const hd = (p1.lat===p2.lat && p1.lon===p2.lon) ? (b.hlog[Math.min(si,b.hlog.length-1)]||0) : brg(p1.lat,p1.lon,p2.lat,p2.lon);
+      bMkrs[i].setIcon(mkBoatIcon(b.color, hd));
+      bMkrs[i].setLatLng([la,lo]);
+      const pts=[], top=Math.min(si,Ln-1);
+      for(let j=0;j<=top;j++) pts.push([b.pos[j].lat,b.pos[j].lon]);
+      pts.push([la,lo]);
+      traces[i].setLatLngs(pts);
+    });
+  }
+  function updHUD(s){ if(!rd) return; $('trkPg').value=Math.round((s/(rd.ns-1))*1000); $('trkTc').textContent=fmtT(s*rd.dt); $('trkTd').textContent=fmtT((rd.ns-1)*rd.dt); }
+  function updLB(s){
+    if(!rd) return;
+    const si=Math.min(Math.floor(s),rd.ns-1);
+    const rows=rd.boats.map(b=>{
+      const idx=Math.min(si,b.pos.length-1);
+      const lg=b.llog[idx], p=b.pos[idx];
+      const fin = lg>=rd.NL;
+      const d = fin?0:distM(p.lat,p.lon,rd.COURSE[lg].lat,rd.COURSE[lg].lon);
+      const finStep = (b.finStep!==null && si>=b.finStep)?b.finStep:null;
+      return { lg, d, b, fin, finStep };
+    }).sort((a,bb)=>{
+      if(a.fin&&bb.fin) return a.finStep-bb.finStep;
+      if(a.fin) return -1; if(bb.fin) return 1;
+      if(a.lg!==bb.lg) return bb.lg-a.lg;
+      return a.d-bb.d;
+    });
+    let html='';
+    rows.forEach((r,rank)=>{
+      const lbl = r.fin ? 'FIN' : rd.LEG_LBL[r.lg];
+      const fc = r.fin ? 'fin':'';
+      const pc = ['p1','p2','p3'][rank]||'';
+      const dm = r.fin ? '' : (r.d<1000 ? Math.round(r.d)+'m' : (r.d/1000).toFixed(1)+'k');
+      html += `<div class="trk-lbr"><div class="trk-lbk ${pc}">${rank+1}</div><div class="trk-lbd" style="background:${r.b.color}"></div><div class="trk-lbn">${r.b.name}</div><div class="trk-lblab ${fc}">${lbl}</div><div class="trk-lbd2">${dm}</div></div>`;
+    });
+    $('trkLb').innerHTML = html;
+  }
+  function updInfo(){
+    if(!rd) return;
+    const R = rd.R;
+    const d = new Date(rd.startTxt);
+    const dateTxt = isNaN(d) ? '01 Jul 2025' : d.toLocaleDateString('en-NZ',{day:'2-digit',month:'short',year:'numeric'});
+    $('trkTitle').textContent = `${R.name} — ${R.venue}`;
+    $('trkInfo').innerHTML = `
+      <div class="trk-ir"><span class="l">Boats</span><span class="v">${rd.boats.length} tracked</span></div>
+      <div class="trk-ir"><span class="l">Course</span><span class="v">${R.course}</span></div>
+      <div class="trk-ir"><span class="l">Venue</span><span class="v">${R.venue}</span></div>
+      <div class="trk-ir"><span class="l">Recorded</span><span class="v">${dateTxt}</span></div>
+      <div class="trk-ir"><span class="l">Duration</span><span class="v">${fmtT((rd.ns-1)*rd.dt)}</span></div>`;
+    const wf = rd.windFrom;
+    $('trkWspd').textContent = deg2dir(wf);
+    $('trkWdir').textContent = `From ${Math.round(wf)}° · est. from course`;
+    drawWind(wf);
+  }
+  function drawWind(wfrom){
+    const cv=$('trkWc'), ctx=cv.getContext('2d');
+    const mut = DARK ? '#8fb0c4' : '#5f7488';
+    const acc = DARK ? '#5cc8ff' : '#0c8fd0';
+    ctx.clearRect(0,0,48,48);
+    const cx=24, cy=24, r=19;
+    ctx.globalAlpha=0.5; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.strokeStyle=mut; ctx.lineWidth=1; ctx.stroke();
+    [0,90,180,270].forEach(a=>{ const ra=(a-90)*Math.PI/180; ctx.beginPath(); ctx.moveTo(cx+Math.cos(ra)*(r-4),cy+Math.sin(ra)*(r-4)); ctx.lineTo(cx+Math.cos(ra)*r,cy+Math.sin(ra)*r); ctx.strokeStyle=mut; ctx.lineWidth=1; ctx.stroke(); });
+    ctx.globalAlpha=1;
+    const ca=(wfrom-90)*Math.PI/180;
+    const tx=cx+Math.cos(ca)*(r-3), ty=cy+Math.sin(ca)*(r-3);
+    const hx=cx-Math.cos(ca)*(r-3), hy=cy-Math.sin(ca)*(r-3);
+    ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(hx,hy); ctx.strokeStyle=acc; ctx.lineWidth=2.5; ctx.stroke();
+    const ang=Math.atan2(hy-ty,hx-tx);
+    ctx.beginPath(); ctx.moveTo(hx,hy); ctx.lineTo(hx-8*Math.cos(ang-.38),hy-8*Math.sin(ang-.38)); ctx.lineTo(hx-8*Math.cos(ang+.38),hy-8*Math.sin(ang+.38)); ctx.closePath(); ctx.fillStyle=acc; ctx.fill();
+    ctx.globalAlpha=0.6; ctx.fillStyle=mut; ctx.font='8px Inter,sans-serif'; ctx.textAlign='center'; ctx.fillText('N',cx,cy-r-2); ctx.globalAlpha=1;
+  }
+  function buildRbtns(){
+    const c=$('trkRbtns'); c.innerHTML='';
+    Object.keys(RACES).forEach((rid,i)=>{
+      const R=RACES[rid];
+      const b=document.createElement('button');
+      b.className='trk-rb'+(rid===raceId?' on':'');
+      const nb=Object.keys(R.boats).length;
+      b.innerHTML=`<div class="trk-rn">${i+1}</div><div class="trk-ri"><div class="trk-rna">${R.name}</div><div class="trk-rsu">${R.venue.split(',')[0]} · ${nb} boats</div></div>`;
+      b.onclick=()=>{ if(rid!==raceId){ director.stop(); loadRace(rid); } };
+      c.appendChild(b);
+    });
+  }
+  function setPlay(on){ const b=$('trkPlay'); b.textContent=on?'⏸':'▶'; on?b.classList.add('on'):b.classList.remove('on'); }
+  function setSpeed(s){
+    pspd=s;
+    document.querySelectorAll('#trk .trk-sbtn').forEach(x=>x.classList.toggle('on', parseInt(x.dataset.s)===s));
+  }
+  function loop(ts){
+    if (tsl!==null && playing && !scrub && rd){
+      const dt=(ts-tsl)/1000;
+      sf = Math.min(sf + dt*pspd/rd.dt, rd.ns-1);
+      render(sf); updHUD(sf);
+      const si=Math.floor(sf);
+      if (si!==lastLB){ updLB(sf); lastLB=si; }
+      if (sf>=rd.ns-1){ playing=false; setPlay(false); }
+    }
+    tsl=ts;
+    requestAnimationFrame(loop);
+  }
+
+  // ---- manual controls (still work if you want to drive it yourself) ----
+  $('trkPlay').onclick=()=>{ if(!rd) return; director.stop(); if (sf>=rd.ns-1) sf=0; playing=!playing; setPlay(playing); };
+  $('trkRst').onclick=()=>{ director.stop(); sf=0; render(0); updHUD(0); updLB(0); lastLB=0; playing=true; setPlay(true); };
+  const pg=$('trkPg');
+  pg.addEventListener('mousedown',()=>{director.stop();scrub=true;});
+  pg.addEventListener('touchstart',()=>{director.stop();scrub=true;},{passive:true});
+  pg.addEventListener('input',()=>{ if(!rd) return; sf=(parseInt(pg.value)/1000)*(rd.ns-1); render(sf); updHUD(sf); updLB(sf); lastLB=Math.floor(sf); });
+  pg.addEventListener('mouseup',()=>{scrub=false;});
+  pg.addEventListener('touchend',()=>{scrub=false;});
+  document.querySelectorAll('#trk .trk-sbtn').forEach(b=>{ b.onclick=()=>{ director.stop(); setSpeed(parseInt(b.dataset.s)); }; });
+  window.addEventListener('resize', ()=>{ if(map) map.invalidateSize(); });
+
+  // =========================================================================
+  //  AUTO-DIRECTOR — runs the hands-free loop. Disable with ?auto=0 in URL.
+  //  Sequence per cycle (~50s): establish → play 5× → scrub demo → 15× burst
+  //  → settle → next race. Cycles through Race 1 → 2 → 3 → back to 1, forever.
+  // =========================================================================
+  const director = (function(){
+    let timers=[], on=false;
+    const RACE_IDS = Object.keys(RACES);
+    let ri = 0;
+    function clear(){ timers.forEach(t=>clearTimeout(t)); timers=[]; }
+    function at(ms, fn){ timers.push(setTimeout(fn, ms)); }
+    function smoothScrub(toFrac, durMs){
+      // animate the timeline knob for a visible "scrubbing" gesture
+      const start=performance.now(), s0=sf, target=toFrac*(rd.ns-1);
+      const wasPlaying=playing; playing=false; scrub=true;
+      function step(now){
+        const k=Math.min((now-start)/durMs,1);
+        const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2; // easeInOut
+        sf = s0+(target-s0)*e;
+        render(sf); updHUD(sf); updLB(sf); lastLB=Math.floor(sf);
+        if(k<1 && on) requestAnimationFrame(step);
+        else { scrub=false; playing=wasPlaying; }
+      }
+      requestAnimationFrame(step);
+    }
+    function runCycle(){
+      if(!on) return;
+      clear();
+      const rid = RACE_IDS[ri];
+      loadRace(rid);                 // resets to start, begins playing
+      setSpeed(5); playing=true; setPlay(true);
+      // establish: hold the start view a moment (already paused-ish at frame 0)
+      // ~0–18s: just let it play at 5x
+      // ~18–26s: scrub backward then forward to show the timeline control
+      at(17000, ()=>{ if(!on) return; smoothScrub(0.32, 2200); });
+      at(20500, ()=>{ if(!on) return; smoothScrub(0.62, 2600); });
+      at(24500, ()=>{ if(!on) return; playing=true; setPlay(true); });
+      // ~30s: brief 15x burst to fast-forward through to the finish
+      at(30000, ()=>{ if(!on) return; setSpeed(15); });
+      at(40000, ()=>{ if(!on) return; setSpeed(5); });
+      // ~48s: move to the next race and loop
+      at(50000, ()=>{ if(!on) return; ri=(ri+1)%RACE_IDS.length; runCycle(); });
+    }
+    return {
+      start(){ on=true; ri=0; runCycle(); },
+      stop(){ on=false; clear(); }
+    };
+  })();
+
+  // ---- boot ----
+  setTimeout(()=>{
+    initMap();
+    const params = new URLSearchParams(location.search);
+    const auto = params.get('auto') !== '0';
+    loadRace(RACE_IDS_FALLBACK());
+    $('trkLoad').classList.add('gone');
+    requestAnimationFrame(loop);
+    if(auto){ setTimeout(()=>director.start(), 1200); }
+  }, 60);
+
+  function RACE_IDS_FALLBACK(){ return Object.keys(RACES)[0]; }
+})();
+</script>
+</body>
+</html>
